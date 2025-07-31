@@ -3,12 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\ApiLog;
+use Spatie\FlareClient\Api;
 use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-
 
 class AuthController extends Controller
 {
@@ -32,6 +33,15 @@ class AuthController extends Controller
             $message->to($user->email)
                 ->subject('Kode OTP Anda');
         });
+
+        ApiLog::create([
+            'url' => route('register'), 
+            'method' => $request->method(),
+            'headers' => json_encode($request->headers->all()),
+            'body' => json_encode($request->all()),
+            'ip' => $request->ip(),
+            'response' => json_encode(['message' => 'Registrasi berhasil.']),
+        ]);
         
         return response()->json([
 
@@ -42,10 +52,20 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $credentials = $request->only('email', 'password');
+        
 
         if (!$token = JWTAuth::attempt($credentials)) {
             return response()->json(['message' => 'Login gagal atau akun tidak ditemukan'], 401);
         }
+
+        ApiLog::create([
+            'url' => route('login'),
+            'method' => $request->method(),
+            'headers' => json_encode($request->headers->all()),
+            'body' => json_encode($request->all()),
+            'ip' => $request->ip(),
+            'response' => json_encode(['token' => $token]),
+        ]);
 
         return response()->json([
             'message' => 'Login berhasil',
@@ -69,6 +89,17 @@ class AuthController extends Controller
         if (!$user) {
             return response()->json(['message' => 'OTP tidak valid'], 401);
         }
+
+       
+        ApiLog::create([
+            'url' => route('2fa-verify'),
+            'method' => $request->method(),
+            'headers' => json_encode($request->headers->all()),
+            'body' => json_encode($request->all()),
+            'ip' => $request->ip(),
+            'response' => "success" === 'success' ? json_encode(['message' => 'Two Factor Authentication berhasil']) : json_encode(['message' => 'Two Factor Authentication gagal']),
+        ]);
+
 
         return response()->json(['message' => 'Two Factor Authentication berhasil']);
     }
